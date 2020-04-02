@@ -17,7 +17,7 @@ const users = require('./json/users.json');
  * @param {String} email The email of the user.
  * @return {Promise<{}>} A promise to the user.
  */
-const getUserWithEmail = function (email) {
+const getUserWithEmail = email => {
   return pool.query(`
   SELECT * FROM users
   WHERE email = $1;
@@ -30,7 +30,7 @@ const getUserWithEmail = function (email) {
     })
     .catch(err => console.error(err));
 
-}
+};
 exports.getUserWithEmail = getUserWithEmail;
 
 /**
@@ -38,7 +38,7 @@ exports.getUserWithEmail = getUserWithEmail;
  * @param {string} id The id of the user.
  * @return {Promise<{}>} A promise to the user.
  */
-const getUserWithId = function (id) {
+const getUserWithId = id => {
   return pool.query(`
   SELECT * FROM users
   WHERE id = $1;
@@ -51,7 +51,7 @@ const getUserWithId = function (id) {
     })
     .catch(err => console.error(err));
 
-}
+};
 exports.getUserWithId = getUserWithId;
 
 
@@ -60,7 +60,7 @@ exports.getUserWithId = getUserWithId;
  * @param {{name: string, password: string, email: string}} user
  * @return {Promise<{}>} A promise to the user.
  */
-const addUser = function (user) {
+const addUser = user => {
   return pool.query(`
   INSERT INTO users (name, email, password)
     VALUES($1, $2, $3)
@@ -70,7 +70,7 @@ const addUser = function (user) {
       res.rows;
     })
     .catch(err => console.error(err));
-}
+};
 exports.addUser = addUser;
 
 /// Reservations
@@ -80,9 +80,23 @@ exports.addUser = addUser;
  * @param {string} guest_id The id of the user.
  * @return {Promise<[{}]>} A promise to the reservations.
  */
-const getAllReservations = function (guest_id, limit = 10) {
-  return getAllProperties(null, 2);
-}
+const getAllReservations = (guest_id, limit = 10) => {
+  return pool.query(
+    `
+    SELECT properties.*, reservations.*, avg(rating) as average_rating
+      FROM reservations
+      JOIN properties ON reservations.property_id = properties.id
+      JOIN property_reviews ON properties.id = property_reviews.property_id 
+    WHERE reservations.guest_id = $1
+      AND reservations.end_date < now()::date
+    GROUP BY properties.id, reservations.id
+    ORDER BY reservations.start_date
+    LIMIT $2;
+    `, [guest_id, limit])
+    .then(res => res.rows)
+    .catch(err => console.error(err));
+
+};
 exports.getAllReservations = getAllReservations;
 
 /// Properties
@@ -99,7 +113,7 @@ const getAllProperties = (options, limit = 10) => {
   LIMIT $1
   `, [limit])
     .then(res => res.rows);
-}
+};
 exports.getAllProperties = getAllProperties;
 
 
@@ -108,10 +122,10 @@ exports.getAllProperties = getAllProperties;
  * @param {{}} property An object containing all of the property details.
  * @return {Promise<{}>} A promise to the property.
  */
-const addProperty = function (property) {
+const addProperty = property => {
   const propertyId = Object.keys(properties).length + 1;
   property.id = propertyId;
   properties[propertyId] = property;
   return Promise.resolve(property);
-}
+};
 exports.addProperty = addProperty;
